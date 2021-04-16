@@ -77,8 +77,12 @@ sudo systemctl stop docker
     - 灵雀云：<https://hub.alauda.cn/>
 - 推荐优先阿里云，然后是 USTC
 - 我下面的讲解也是基于阿里云加速
-- 阿里云的服务需要注册账号，**首次使用需要设置 docker 登录密码（阿里云叫做：**修改Registry登录密码**），这个以后用私人仓库会用到。**
-	- 如果忘记了，后面可以在这里修改：<https://cr.console.aliyun.com/#/imageList>
+- 阿里云的服务需要注册账号
+	- 新创建命名空间：<https://cr.console.aliyun.com/cn-hangzhou/instance/namespaces>
+    - 设置访问凭证（推荐用固定凭证）：<https://cr.console.aliyun.com/cn-hangzhou/instance/credentials>
+	- 镜像仓库列表：<https://cr.console.aliyun.com/cn-hangzhou/instances/repositories>
+	    - 你提交的 image 都会在这里出现
+	    - 如果你的命名空间此时此刻是私有的，则你 push 的 image 也是私有的。当你的命名空间改为公开也不会影响已经 push 过的 image 属性，只能重新再来 push 一次。
     - 注册后请访问：<https://cr.console.aliyun.com/#/accelerator>，你会看到专属的加速地址，比如我是：`https://ldhc17y9.mirror.aliyuncs.com`，所以下面文章你看到该地址都表示是这个专属地址，请记得自己更换自己的。
     - 以及教你如何使用 Docker 加速器。如果你已经安装了最新版的 Docker 你就不需要用它的脚本进行安装了。
 - 最新版本的 Docker 是新增配置文件：`vim /etc/docker/daemon.json`，增加如下内容：
@@ -268,6 +272,7 @@ CONTAINER ID        NAME                      CPU %               MEM USAGE / LI
 - `docker inspect 容器ID`：查看容器的全面信息，用 JSON 格式输出
 - `docker inspect network名称`：查看 network 信息，用 JSON 格式输出，包含使用该网络的容器有哪些
 - `docker container update --restart=always 容器ID`：调整容器为永远启动
+- `docker container update --restart=no 容器ID`：调整容器为不永远启动
 - `docker system df`：类似于 Linux 上的 df 命令，用于查看 Docker 的磁盘使用情况
 	- Images 镜像
 	- Containers 容器
@@ -554,8 +559,55 @@ Build Cache                                                 0B                  
 - Dockerfile 代码更新频繁，自然 docker build 构建同名镜像也频繁的很，产生了众多名为 none 的无用镜像
 
 ```
-docker rmi $(docker images -f "dangling=true" -q)
+清除无用的镜像，包含 none 的镜像
+docker image prune
+
+清除没有容器使用的镜像，如果你有些容器只是临时关闭，建议不要选择这个命令
+docker image prune -a
+
+可以用于清理磁盘，删除关闭的容器、无用的数据卷和网络，以及dangling镜像(即无tag的镜像)。
+docker system prune
+
+清理得更加彻底，可以将没有容器使用Docker镜像都删掉。注意，这两个命令会把你暂时关闭的容器，以及暂时没有用到的Docker镜像都删掉了…所以使用之前一定要想清楚.。我没用过，因为会清理 没有开启的 Docker
+docker system prune -a
 ```
+
+## 迁移 Docker 软件根目录
+
+```
+默认 docker 的根目录是：/var/lib/docker
+查看该目录已使用多少空间：du -hs /var/lib/docker/
+
+开始迁移
+先停止服务：systemctl stop docker
+创建最终迁移目录：mkdir -p /opt/dockerlib
+
+如果这里还假设这里有一个数据库盘是挂载在 /mnt 下，我们要移到 /opt 目录下
+cp -arp /opt/* /mnt/
+rm -rf /opt/*
+umount /mnt
+mount /dev/vdb1 /opt
+然后修改 vim /etc/fstab，把上文填写的 /mnt 改为 /opt
+
+迁移/var/lib/docker目录下的文件到新创建的目录：cp -arp /var/lib/docker/* /opt/dockerlib/
+
+vim /etc/docker/daemon.json 添加如下参数
+{
+  "graph": "/opt/dockerlib"
+}
+
+重启 docker
+systemctl daemon-reload && systemctl restart docker
+
+然后查看信息：docker info
+显示：
+Docker Root Dir: /opt/dockerlib
+
+
+删除旧目录：
+rm -rf /var/lib/docker
+```
+
 
 ## Docker daemon.json 可配置参数
 

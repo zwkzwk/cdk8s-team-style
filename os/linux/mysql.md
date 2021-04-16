@@ -14,6 +14,84 @@
 - 官网 5.6 下载：<http://dev.mysql.com/downloads/mysql/5.6.html#downloads>
 - 官网 5.7 下载：<http://dev.mysql.com/downloads/mysql/5.7.html#downloads>
 - 官网帮助中心：<http://dev.mysql.com/doc/refman/5.6/en/source-installation.html>
+- Docker 官网：<https://hub.docker.com/_/mysql/>
+
+
+## Docker 安装 MySQL 8.0.x（不带挂载）
+
+```
+docker run \
+	--name mysql \
+	--restart always \
+	-p 3316:3306 \
+	-e MYSQL_ROOT_PASSWORD=123456 \
+	-d \
+	mysql:8
+```
+
+- 默认的配置文件在
+    - `/etc/mysql/my.cnf`
+    - `/etc/mysql/conf.d`
+
+
+## Docker 安装 MySQL 8.0.x（带挂载）
+
+- 创建本地数据存储 + 配置文件目录：`mkdir -p ~/docker/mysql/datadir ~/docker/mysql/conf ~/docker/mysql/log`
+- 在宿主机上创建一个配置文件：`vim ~/docker/mysql/conf/mysql-1.cnf`，内容如下：
+
+```
+[mysql]
+default-character-set = utf8mb4
+
+[mysqld]
+max_connections = 500
+pid-file = /var/run/mysqld/mysqld.pid
+socket = /var/run/mysqld/mysqld.sock
+datadir = /var/lib/mysql
+
+default-storage-engine = InnoDB
+collation-server = utf8mb4_unicode_520_ci
+init_connect = 'SET NAMES utf8mb4'
+character-set-server = utf8mb4
+# 表名大小写敏感 0 是区分大小写，1 是不分区，全部采用小写
+lower_case_table_names = 1
+max_allowed_packet = 50M
+innodb_buffer_pool_size = 64M
+sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+# 避免在 dump 命令中加上密码后提示：Using a password on the command line interface can be insecure
+[mysqldump]
+user=root
+password=123456
+```
+
+
+- 赋权（避免挂载的时候，一些程序需要容器中的用户的特定权限使用）：`chmod -R 777 ~/docker/mysql/datadir ~/docker/mysql/log`
+- 赋权：`chown -R 0:0 ~/docker/mysql/conf`
+	- 配置文件的赋权比较特殊，如果是给 777 权限会报：[Warning] World-writable config file '/etc/mysql/conf.d/mysql-1.cnf' is ignored，所以这里要特殊对待。容器内是用 root 的 uid，所以这里与之相匹配赋权即可。
+	- 我是进入容器 bash 内，输入：`whoami && id`，看到默认用户的 uid 是 0，所以这里才 chown 0
+- 启动
+
+```
+docker run -p 3306:3306 \
+    --name cloud-mysql \
+    --restart always \
+    -v ~/docker/mysql/datadir:/var/lib/mysql \
+    -v ~/docker/mysql/log:/var/log/mysql \
+    -v ~/docker/mysql/conf:/etc/mysql/conf.d \
+    -e MYSQL_ROOT_PASSWORD=123456 \
+    -d mysql:8
+```
+
+- 连上容器：`docker exec -it cloud-mysql /bin/bash`
+	- 连上 MySQL：`mysql -u root -p`
+	- 创建表：`CREATE DATABASE wormhole DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;`
+- docker 的 MySQL 备份和还原：
+    - opt 是宿主机的目录，不是 docker 容器里面的目录
+	- 备份：`docker exec cloud-mysql /usr/bin/mysqldump -u root --password=123456 DATABASE_Name > /opt/backup.sql`
+	- 还原：`docker exec -i cloud-mysql /usr/bin/mysql -u root --password=123456 DATABASE_Name < /opt/backup.sql`
+
+-------------------------------------------------------------------
 
 
 ## Docker 安装 MySQL 5.7（不带挂载）
@@ -24,24 +102,33 @@ docker run \
 	--restart always \
 	-p 3306:3306 \
 	-e MYSQL_ROOT_PASSWORD=123456 \
-	-e MYSQL_DATABASE=youmeek_nav \
 	-d \
 	mysql:5.7
 ```
 
 - 连上容器：`docker exec -it mysql-jira /bin/bash`
 	- 连上 MySQL：`mysql -u root -p`
-- 设置编码：
+- 设置数据库编码：
 
 ```
 SET NAMES 'utf8mb4';
 alter database jira_db character set utf8mb4;
 ```
 
+- 修改已有表编码
+
+```
+先查询出所有表名：
+select table_name,`engine`,table_collation from information_schema.`TABLES` where TABLE_SCHEMA = '库名';
+
+alter table 表名 convert to character set utf8mb4;
+```
+
+
 ## Docker 安装 MySQL 5.7（带挂载）
 
-- 创建本地数据存储 + 配置文件目录：`mkdir -p /data/docker/mysql/datadir /data/docker/mysql/conf /data/docker/mysql/log`
-- 在宿主机上创建一个配置文件：`vim /data/docker/mysql/conf/mysql-1.cnf`，内容如下：
+- 创建本地数据存储 + 配置文件目录：`mkdir -p ~/docker/mysql/datadir ~/docker/mysql/conf ~/docker/mysql/log`
+- 在宿主机上创建一个配置文件：`vim ~/docker/mysql/conf/mysql-1.cnf`，内容如下：
 
 ```
 # 该编码设置是我自己配置的
@@ -50,6 +137,7 @@ default-character-set = utf8mb4
 
 # 下面内容是 docker mysql 默认的 start
 [mysqld]
+max_connections = 500
 pid-file = /var/run/mysqld/mysqld.pid
 socket = /var/run/mysqld/mysqld.sock
 datadir = /var/lib/mysql
@@ -66,18 +154,21 @@ default-storage-engine = InnoDB
 collation-server = utf8mb4_unicode_520_ci
 init_connect = 'SET NAMES utf8mb4'
 character-set-server = utf8mb4
+# 表名大小写敏感 0 是区分大小写，1 是不分区，全部采用小写
 lower_case_table_names = 1
 max_allowed_packet = 50M
+innodb_buffer_pool_size = 64M
 sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 
 # 避免在 dump 命令中加上密码后提示：Using a password on the command line interface can be insecure
 [mysqldump]
 user=root
 password=123456
+
 ```
 
-- 赋权（避免挂载的时候，一些程序需要容器中的用户的特定权限使用）：`chmod -R 777 /data/docker/mysql/datadir /data/docker/mysql/log`
-- 赋权：`chown -R 0:0 /data/docker/mysql/conf`
+- 赋权（避免挂载的时候，一些程序需要容器中的用户的特定权限使用）：`chmod -R 777 ~/docker/mysql/datadir ~/docker/mysql/log`
+- 赋权：`chown -R 0:0 ~/docker/mysql/conf`
 	- 配置文件的赋权比较特殊，如果是给 777 权限会报：[Warning] World-writable config file '/etc/mysql/conf.d/mysql-1.cnf' is ignored，所以这里要特殊对待。容器内是用 root 的 uid，所以这里与之相匹配赋权即可。
 	- 我是进入容器 bash 内，输入：`whoami && id`，看到默认用户的 uid 是 0，所以这里才 chown 0
 - 启动
@@ -86,9 +177,9 @@ password=123456
 docker run -p 3306:3306 \
     --name cloud-mysql \
     --restart always \
-    -v /data/docker/mysql/datadir:/var/lib/mysql \
-    -v /data/docker/mysql/log:/var/log/mysql \
-    -v /data/docker/mysql/conf:/etc/mysql/conf.d \
+    -v ~/docker/mysql/datadir:/var/lib/mysql \
+    -v ~/docker/mysql/log:/var/log/mysql \
+    -v ~/docker/mysql/conf:/etc/mysql/conf.d \
     -e MYSQL_ROOT_PASSWORD=123456 \
     -d mysql:5.7
 ```
@@ -96,32 +187,6 @@ docker run -p 3306:3306 \
 - 连上容器：`docker exec -it cloud-mysql /bin/bash`
 	- 连上 MySQL：`mysql -u root -p`
 	- 创建表：`CREATE DATABASE wormhole DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;`
-- 关于容器的 MySQL 配置，官网是这样说的：<https://hub.docker.com/_/mysql/>
-
->> The MySQL startup configuration is specified in the file /etc/mysql/my.cnf, and that file in turn includes any files found in the /etc/mysql/conf.d directory that end with .cnf.Settings in files in this directory will augment and/or override settings in /etc/mysql/my.cnf. If you want to use a customized MySQL configuration,you can create your alternative configuration file in a directory on the host machine and then mount that directory location as /etc/mysql/conf.d inside the mysql container.
-
-- 容器中的 my.cnf 内容如下：
-
-```
-# Copyright (c) 2016, Oracle and/or its affiliates. All rights reserved.
-#
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 2 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
-
-!includedir /etc/mysql/conf.d/
-!includedir /etc/mysql/mysql.conf.d/
-```
-
 - docker 的 MySQL 备份和还原：
 	- 备份：`docker exec cloud-mysql /usr/bin/mysqldump -u root --password=123456 DATABASE_Name > /opt/backup.sql`
 	- 还原：`docker exec -i cloud-mysql /usr/bin/mysql -u root --password=123456 DATABASE_Name < /opt/backup.sql`
@@ -155,7 +220,35 @@ table_definition_cache=400
 table_open_cache=256
 ```
 
-## 修改 root 账号密码
+## 修改 root 账号密码（MySQL 8）
+
+```
+vim /etc/my.cnf
+在 [mysqld] 下面新增一行配置，让MySQL进入免密状态：
+skip-grant-tables
+
+然后重启服务：
+systemctl restart mysqld
+
+进入MySQL命令行：
+mysql -u root -p
+
+清除下 root 密码为空字符串：
+use mysql;
+UPDATE user SET authentication_string='' WHERE user='root';
+
+退出 MySQL，删除之前在 /etc/my.cnf 文件中配置的 skip-grant-tables，然后重启 MySql 服务。
+systemctl restart mysqld
+
+然后重新进入MySQL命令行：
+mysql -u root -p
+
+ALTER USER 'root'@'localhost' IDENTIFIED WITH 'mysql_native_password' BY 'MyPwd_123456' PASSWORD EXPIRE NEVER;
+```
+
+
+
+## 修改 root 账号密码（MySQL 5.6）
 
 - 启动 Mysql 服务器（CentOS 6）：`service mysql start`
 - 启动 Mysql 服务器（CentOS 7）：`systemctl start mysql`
@@ -176,6 +269,21 @@ table_open_cache=256
 		- 把密码改为：123456，进入 MySQL 命令后执行：`UPDATE user SET Password=PASSWORD('123456') where USER='root';FLUSH PRIVILEGES;`
 		- 然后重启 MySQL 服务（CentOS 6）：`service mysql restart`
 		- 然后重启 MySQL 服务（CentOS 7）：`systemctl restart mysql`
+
+
+## 重设 root 账号密码（MySQL 5.7）
+
+- 修改配置文件：`vim /etc/my.cnf`
+- 在 mysqld 模块下增加：`skip-grant-tables=1`
+- 重启 mysql：`systemctl restart mysql`
+- 进入 mysql：`mysql -u root mysql`
+- 重设密码：`update user set authentication_string=password('123456') where user='root';FLUSH PRIVILEGES;`
+- 重启 mysql：`systemctl restart mysql`
+- 进入 mysql：`mysql -u root mysql -p`
+    - 输入密码
+    - 重新再设置密码：`SET PASSWORD = PASSWORD('123456');`
+        - 因为不这样 mysql 会提示：You must reset your password using ALTER USER statement before executing this statement.
+
 
 ## 连接报错："Host '192.168.1.133' is not allowed to connect to this MySQL server"
 
@@ -218,6 +326,8 @@ this is incompatible with sql_mode=only_full_group_by
 sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 ```
 
+- 或者：`SET GLOBAL sql_mode='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';`
+- 设置完成后记得关闭会话，重新连接
 
 ## 小内存机子，MySQL 频繁挂掉解决办法（1G + CentOS 7.4）
 
@@ -263,6 +373,68 @@ swapon /swapfile
     - 字段类型是否选择合理
 - explain
     - 哪些场景不走索引进行全表扫描
+
+## 其他常用 sql
+
+
+- 创建用户并授权给这个用户一个数据库权限
+
+```
+CREATE USER 'three_class_user'@'%' IDENTIFIED BY '1MTW.3RIkX9zOXRt2D7CRh';
+GRANT ALL PRIVILEGES ON three_class_db.* TO 'three_class_user'@'%';
+flush privileges;
+```
+
+
+
+-------------------------------------------------------------------
+
+## MySQL8 打开慢查询（与 5.7 版本配置有一点点不一样）
+
+- 参考：<https://blog.csdn.net/phker/article/details/83146676>
+
+```
+Show variables like '%slow_query%'; -- 可以用这个查询所有的变量
+
+//第一步
+set global log_output='TABLE'; -- 开启慢日志,纪录到 mysql.slow_log 表
+set global long_query_time=2; -- 设置超过2秒的查询为慢查询
+set global slow_query_log='ON';-- 打开慢日志记录
+
+//第二步 运行一下比较慢的功能,执行下面的语句
+select convert(sql_text using utf8) sql_text from mysql.slow_log -- 查询慢sql的 日志
+
+//第三步 记得关上日志
+set global slow_query_log='OFF'; -- 如果不用了记得关上日志
+```
+
+- 删除历史记录
+
+```
+SET GLOBAL slow_query_log = 'OFF';
+
+ALTER TABLE mysql.slow_log RENAME mysql.slow_log_drop;
+
+ CREATE TABLE `mysql`.`slow_log` (
+  `start_time` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  `user_host` mediumtext NOT NULL,
+  `query_time` time(6) NOT NULL,
+  `lock_time` time(6) NOT NULL,
+  `rows_sent` int(11) NOT NULL,
+  `rows_examined` int(11) NOT NULL,
+  `db` varchar(512) NOT NULL,
+  `last_insert_id` int(11) NOT NULL,
+  `insert_id` int(11) NOT NULL,
+  `server_id` int(10) unsigned NOT NULL,
+  `sql_text` mediumblob NOT NULL,
+  `thread_id` bigint(21) unsigned NOT NULL
+) ENGINE=CSV DEFAULT CHARSET=utf8 COMMENT='Slow log';
+
+SET GLOBAL slow_query_log = 'ON';
+
+DROP TABLE mysql.slow_log_drop; 
+```
+
 
 -------------------------------------------------------------------
 

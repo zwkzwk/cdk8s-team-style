@@ -17,7 +17,7 @@
 - 官网下载中有介绍其版本标识：<https://jenkins.io/download/>
 	- 我们就选用：Long-term Support (LTS)
 - 官网关于 Docker 部署也有专门文档：<https://github.com/jenkinsci/docker/blob/master/README.md>
-- 先创建一个宿主机以后用来存放数据的目录：`mkdir -p /data/jenkins/jenkins_home && chmod 777 -R /data/jenkins/jenkins_home`
+- 先创建一个宿主机以后用来存放数据的目录：`mkdir -p /data/jenkins/jenkins_home && chmod -R 777 /data/jenkins/jenkins_home`
 - 安装镜像（813MB，有点大）：`docker pull jenkins/jenkins:lts`
 - 查看下载下来的镜像：`docker images`
 - 首次运行镜像：`docker run --name jenkins-master -p 8123:18080 -p 50000:50000 -v /etc/localtime:/etc/localtime -v /data/jenkins/jenkins_home:/var/jenkins_home -e JAVA_OPTS="-Duser.timezone=Asia/Shanghai" -d --restart always jenkins/jenkins:lts`
@@ -156,7 +156,7 @@ daacc724767640a29ddc99d159a80cf8
 This may also be found at: /root/.jenkins/secrets/initialAdminPassword
 ```
 
-- 守护进程启动：`nohup java -jar /usr/lib/jenkins/jenkins.war --httpPort=18080 > /dev/null 2>&1 &`
+- 守护进程启动：`nohup java -jar /usr/lib/jenkins/jenkins.war --httpPort=18080 > nohub-jenkins.log 2>&1 &`
 - 浏览器访问 Jenkins 首页开始配置：<http://192.168.0.105:18080/>
 - 特殊情况：
 	- 如果配置插件过程遇到这个错误：`No valid crumb was included in the request`，则多重试几次。
@@ -986,8 +986,11 @@ pipeline {
 }
 ```
 
+-------------------------------------------------------------------
 
+## 普通窗口配置的一些细节
 
+- 如果要执行 shell 启动一个应用，需要这样写：`BUILD_ID=dontKillMe sh ./startup.sh start`
 
 
 -------------------------------------------------------------------

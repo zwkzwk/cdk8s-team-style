@@ -22,11 +22,21 @@
 - 库名：最多 32 个字符
 
 ```mysql
-DROP DATABASE IF EXISTS `oauth_sso`;
+DROP DATABASE IF EXISTS `oauth_sso_db`;
 
-CREATE DATABASE IF NOT EXISTS `oauth_sso` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;
+CREATE DATABASE IF NOT EXISTS `oauth_sso_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_520_ci;
 
-USE `oauth_sso`;
+USE `oauth_sso_db`;
+```
+
+### 创建库与之对应的用户
+
+```mysql
+CREATE USER 'my_user_name'@'%' IDENTIFIED BY '123456';
+
+GRANT ALL PRIVILEGES ON oauth_sso_db.* TO 'my_user_name'@'%';
+
+flush privileges;
 ```
 
 ### 创建数据表原则（CREATE TABLE）
@@ -60,13 +70,18 @@ USE `oauth_sso`;
 	- 对于字段较多的表，如果有些字段的使用频率很低，可以将这些字段分离出来形成新表，然后有业务 ID 关联业务主表
 	- 可以避免查询缓存频繁失效（要考虑这样的设计会不会反而需要经常关联查询，这样是得不偿失）
 - 设计索引
+    - 经常在 WHERE 条件中用到的字段需要索引
+    - 经常在 order by、group by、distinct 字段需要索引
     - 一张表索引数量控制小于等于 5 个
     - 一个索引的字段控制在小于等于 5 个（复合索引）
     - 含义上的外键字段要和主键字段类型一直，这样在关联查询才会走索引
     - 由于枚举字段的值都是来回重复的值，对该字段创建索引没有意义（字段值越不同，区分度越高，索引树的分叉也就越多，一次性找到的概率也就越高）
     - 索引字段尽可能是 NOT NULL
     - 尽量的扩展索引，不要新建索引。比如表中已经有a的索引，现在要加(a,b)的索引，那么只需要修改原来的索引即可。这样也可避免索引重复
-- 复合索引遵守：最左匹配原则 == 越常用的字段越放左边
+- 复合索引遵守：
+    - 最左匹配原则 == 使用频繁的的字段越放左边
+    - 区分度越高的字段越放左边（区分度高表示越容易筛选出准确数据的条件）
+    - 尽量把字段长度小的字段越放左边
 - 复合索引说明：
 
 ```
@@ -153,6 +168,88 @@ ALTER TABLE `my_db`.`my_table` ADD UNIQUE KEY unique_username (username) COMMENT
 
 ```
 DROP INDEX index_client_id ON `my_db`.`my_table`;
+```
+
+### 常用连接语句
+
+- 查询
+
+```sql
+-- 交叉连接 - CROSS JOIN，交叉查询的结果集是：两个结果集的乘积。显示列结果是，第一张表的列+第二张表的列数据
+-- 哪个表放一个位置，哪张表的列先显示
+SELECT * FROM product CROSS JOIN sku;
+
+-- 内连接 - INNER JOIN，取两张表的交集
+SELECT p.*,s.*
+FROM product AS p INNER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 左外连接（LEFT OUTER JOIN），返回左表所有的行，即使右表中有部分数据跟左表不匹配。右表中不匹配的信息那部分信息不会显示出来。
+SELECT p.*,s.*
+FROM product AS p LEFT OUTER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 右外连接（RIGHT OUTER JOIN），返回右表所有的行，即使左表中有部分数据跟右表不匹配。左表中不匹配的信息那部分信息不会显示出来。
+SELECT p.*,s.*
+FROM product AS p RIGHT OUTER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 全连接（MySQL不支持，所以只能用特殊方法来处理）（FULL OUTER JOIN）
+-- 特殊要求：左连接查询的结果集的列，必须和右连接查询的结果集的列是一样的个数，如果不一样，会报错。
+-- 两个查询的结果集最好也别取不同列值，不然结果会整合在一起，不合理
+SELECT p.*,s.*
+FROM product AS p LEFT OUTER JOIN sku AS s
+ON p.product_id = s.product_id
+UNION
+SELECT p.*,s.*
+FROM product AS p RIGHT OUTER JOIN sku AS s
+-- 交叉连接 - CROSS JOIN，交叉查询的结果集是：两个结果集的乘积。显示列结果是，第一张表的列+第二张表的列数据
+-- 哪个表放一个位置，哪张表的列先显示
+SELECT * FROM product CROSS JOIN sku;
+
+-- 内连接 - INNER JOIN，取两张表的交集
+SELECT p.*,s.*
+FROM product AS p INNER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 左外连接（LEFT OUTER JOIN），返回左表所有的行，即使右表中有部分数据跟左表不匹配。右表中不匹配的信息那部分信息不会显示出来。
+SELECT p.*,s.*
+FROM product AS p LEFT OUTER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 右外连接（RIGHT OUTER JOIN），返回右表所有的行，即使左表中有部分数据跟右表不匹配。左表中不匹配的信息那部分信息不会显示出来。
+SELECT p.*,s.*
+FROM product AS p RIGHT OUTER JOIN sku AS s
+ON p.product_id = s.product_id;
+
+-- 全连接（MySQL不支持，所以只能用特殊方法来处理）（FULL OUTER JOIN）
+-- 特殊要求：左连接查询的结果集的列，必须和右连接查询的结果集的列是一样的个数，如果不一样，会报错。
+-- 两个查询的结果集最好也别取不同列值，不然结果会整合在一起，不合理
+SELECT p.*,s.*
+FROM product AS p LEFT OUTER JOIN sku AS s
+ON p.product_id = s.product_id
+UNION
+SELECT p.*,s.*
+FROM product AS p RIGHT OUTER JOIN sku AS s
+ON p.product_id = s.product_id;
+```
+
+- 更新
+
+```sql
+UPDATE 
+product AS p JOIN sku AS s 
+ON p.product_id = s.product_id
+AND p.name = 'iPhone'
+SET s.sal = 10000, p.name = 'iPhone x';
+```
+
+- 删除
+
+```sql
+DELETE p,s FROM product AS p JOIN sku AS s 
+ON p.product_id = s.product_id
+AND p.name = 'iPhone';
 ```
 
 ### JDBC 连接设置（mysql-connector-java）
@@ -251,7 +348,16 @@ spring:
 - 考虑是否变更几率少，如果是就上缓存
 - 少用 `select *`
 - 少用 `子查询，多用连接(join)`，因为子查询会产生临时表，没有索引，而优化器对连接有优化。但是子查询可读性比较高，如果数据不多也可以用。
+- 避免 join 太多表
+    - 每 join 一个表就会多占用一部分内存（join_buffer_size）
+    - 会产生临时表操作，影响查询效率
+    - 一般建议不要超过 5 个表的 join
 - 多用 `limit`
+- in 条件尽量不要超过 500 个
+- 禁止使用 order by rand() 进行随机排序，会把所有符合条件的数据都加载到内存进行随机排序，消耗 CPU 和 IO、内存
+- WHERE 条件中尽可能少用函数，不然会无法使用索引
+- UNION ALL 不会对结果进行去重操作，更加高效。UNION 会进行去重操作。
+- 大 SQL 尽可能拆分成小 SQL，然后在程序中并行执行。一个 SQL 只能使用一个 CPU 进行计算
 - 多表关联建议控制在 4 个表以内
 - inner join 优于 left join
 - 用 exists 替代 in，用 not exists 替代 not in
@@ -285,7 +391,8 @@ spring:
 
 ## MySQL 写 INSERT/UPDATE/DELETE SQL 原则
 
-
+- insert 语句禁止使用不含字段的写法：`insert into my_table values(1,2,3);`
+- 修改大表的结构推荐使用：pt-online-schema-change 工具
 - 切分执行
     - 比如一下子要删除大量表中的数据，耗时要非常久，这时候会暂满整个事务日志，阻塞很多小查询的资源。这时候可以写个程序，改为每次删除 1 万条数据，每隔 5 分钟执行一次。
 - 插入数据时，影响插入速度的主要是索引、唯一性校验、一次插入的数据条数等，开发环境情况下的考虑：
@@ -299,11 +406,19 @@ spring:
 		- 插入数据之前执行禁止对外键的检查，数据插入完成后再恢复，可以提供插入速度。
 		- 禁用：`SET foreign_key_checks = 0;`
 		- 开启：`SET foreign_key_checks = 1;`
-	- 使用批量插入数据
+	- 使用批量插入数据，但是如果数据量超过 100W，要分批写入，不然会引起主从延迟，binlog 同步有风险，有大事务风险等
 	- 禁止自动提交
 		- 插入数据之前执行禁止事务的自动提交，数据插入完成后再恢复，可以提供插入速度。
 		- 禁用：`SET autocommit = 0;`
 		- 开启：`SET autocommit = 1;`
+
+-------------------------------------------------------------------
+
+## MySQL 事务
+
+- 事务有4种特性：原子性、一致性、隔离性、持久性
+- 事务的隔离性由锁机制实现
+- 原子性、一致性和持久性由事务的 redo 日志和 undo 日志来保证。
 
 -------------------------------------------------------------------
 
@@ -356,75 +471,6 @@ show session variables;
 - show variables 优先显示会话级变量的值，如果这个值不存在，则显示全局级变量的值，当然你也可以加上 GLOBAL 或 SESSION 关键字区别;
 - global 是整个 MySQL 程序层面的参数，重启 MySQL 依旧存在
 - session 是会话级别，如果有修改，则在当前的连接中是有效的，重启 MySQL 后，或者断开连接后就失效。
-- 查看慢日志的参数
-
-```
-show variables like '%slow_query_log%';
-
-打开：
-set global slow_query_log='ON';
-
-关闭：
-set global slow_query_log='OFF';
-```
-
-
-- 查看通用日志的参数
-
-```
-show variables like '%general_log%';
-
-打开：
-set global general_log='ON';
-
-关闭：
-set global general_log='OFF';
-```
-
-- 现在我们就可以监控 MySQL 看有什么 sql 语句在执行：`tail -300f /usr/local/mysql/data/youmeekdeiMac.log`
-- 查看好要关闭可以设置：
-
-```
-set global general_log='OFF';
-```
-
-
-### 死锁故障排除
-
-- 查询 innodb 状态（输出内容很多）：
-
-```
-show engine innodb status;
-```
-
-- 查询哪些表在被使用，是否有锁表：`show open tables where in_use > 0;`
-- 锁性能状态：`show status like 'innodb_row_lock_%';`
-    - innodb_row_lock_current_waits：当前等待锁的数量
-    - innodb_row_lock_time：系统启动到现在、锁定的总时间长度
-    - innodb_row_lock_time_avg：每次平均锁定的时间
-    - innodb_row_lock_time_max：最长一次锁定时间
-    - innodb_row_lock_waits：系统启动到现在、总共锁定次数
-- 帮我们分析表，并提出建议：`select * from my_db_table procedure analyse();`
-
-
-### 并发问题排除
-
-```
-show processlist;
-
-如果要统计，可以把结果输出到一个文件，然后再：grep State: processlist.txt | sort | uniq -c | sort -rn
-
-结束某个请求：
-kill 122; 
-```
-
-```
-查看哪些请求被锁住了：
-先选择：information_schema 数据库
-SELECT * FROM information_schema.innodb_locks;
-SELECT * FROM information_schema.innodb_lock_waits;
-SELECT * FROM information_schema.innodb_trx;
-```
 
 -------------------------------------------------------------------
 
@@ -463,6 +509,8 @@ public void a_batchCreate() {
 
 
 - 使用 EXPLAIN 进行 SQL 语句分析：`EXPLAIN SELECT * FROM sys_user;`，效果如下：
+    - 因为 EXPLAIN 只是把简单的结果显示出来，对于过程中的一些细节不显示，所以我们可以再执行一下 `SHOW WARNINGS;` 可以显示更多警告，包含显示为什么不使用索引的原因
+    - SHOW WARNINGS 可以显示上一个命令的警告信息，SHOW ERRORS 可以显示上一个命令的错误信息
 
 ```
 id|select_type|table   |partitions|type|possible_keys|key|key_len|ref|rows|filtered|Extra|
@@ -698,3 +746,144 @@ int 类型的字段能存储的数据上限还是 2147483647(有符号型) 和 4
 
 - ENUM，SET，BIT
 
+## 软件小技巧
+
+- 我们在开发阶段通过 Navicat 界面修改了表结构、更新了数据等操作，Navicat 都是有记录变更 SQL 的，我们可以复制这个 SQL，方便了后续更新线上的时候自己编写 SQL
+- 无法看到下图可以复制我，然后新窗口打开：[Navicat-历史记录的使用.gif](https://upload-images.jianshu.io/upload_images/12159-30e0a8c1967083d7.gif?imageMogr2/auto-orient/strip)
+
+<a href="https://imgchr.com/i/s7pmtS"><img src="https://s3.ax1x.com/2021/01/23/s7pmtS.md.gif" alt="s7pmtS.gif" border="0" /></a>
+
+
+
+-------------------------------------------------------------------
+
+
+### 死锁故障排除
+
+- 查询 innodb 状态（输出内容很多）：
+
+```
+show engine innodb status;
+```
+
+- 查询哪些表在被使用，是否有锁表：`show open tables where in_use > 0;`
+- 锁性能状态：`show status like 'innodb_row_lock_%';`
+    - innodb_row_lock_current_waits：当前等待锁的数量
+    - innodb_row_lock_time：系统启动到现在、锁定的总时间长度
+    - innodb_row_lock_time_avg：每次平均锁定的时间
+    - innodb_row_lock_time_max：最长一次锁定时间
+    - innodb_row_lock_waits：系统启动到现在、总共锁定次数
+- 帮我们分析表，并提出建议：`select * from my_db_table procedure analyse();`
+
+
+### 并发问题排除好（也是锁问题）
+
+- 查询连接
+
+```
+show processlist;
+show full processlist;
+
+大多链接的 state 其实是 Sleep 的，这种的其实是空闲状态，没有太多查看价值，我们可以查询非空闲状态的
+# 查询非 Sleep 状态的链接，按消耗时间字段倒序展示（不包含 Sleep）
+select id, db, user, host, command, time, state, info
+from information_schema.processlist
+where command != 'Sleep'
+order by time desc;
+
+常用字段说明
+id - 线程ID，可以用：kill id; 杀死一个线程，很有用
+db - 数据库
+user - 用户
+host - 连库的主机IP
+command - 当前执行的命令，比如最常见的：Sleep，Query，Connect 等
+time - 消耗时间，单位秒，很有用
+state - 执行状态，比如：Sending data，Sorting for group，Creating tmp table，Locked等等，很有用，其他状态可以看看本文最后的参考文章
+info - 执行的SQL语句，很有用
+
+按客户端 IP 分组，看哪个客户端的链接数最多（不包含 Sleep）
+select client_ip,count(client_ip) as client_num 
+from (select substring_index(host,':' ,1) as client_ip from information_schema.processlist where command != 'Sleep') as connect_info 
+group by client_ip order by client_num desc;
+
+
+结束某个请求：
+kill 122; 
+
+也可以批量kill：
+-- 查询执行时间超过2分钟的线程，然后拼接成 kill 语句
+select concat('kill ', id, ';')
+from information_schema.processlist
+where command != 'Sleep'
+and time > 2*60
+order by time desc;
+
+```
+
+- 查询锁
+
+```
+查看哪些请求被锁住了：
+先选择：information_schema 数据库
+SELECT * FROM information_schema.innodb_locks;
+SELECT * FROM information_schema.innodb_lock_waits;
+SELECT * FROM information_schema.innodb_trx;
+```
+
+```
+查询等待锁的语句
+SELECT * FROM performance_schema.events_statements_history WHERE thread_id IN(
+SELECT b.`THREAD_ID` FROM sys.`innodb_lock_waits` AS a , performance_schema.threads AS b
+WHERE a.waiting_pid = b.`PROCESSLIST_ID`)
+ORDER BY timer_start ASC;
+
+查询持有锁的语句
+SELECT * FROM performance_schema.events_statements_history WHERE thread_id IN(
+SELECT b.`THREAD_ID` FROM sys.`innodb_lock_waits` AS a , performance_schema.threads AS b
+WHERE a.`blocking_pid` = b.`PROCESSLIST_ID`)
+ORDER BY timer_start ASC;
+```
+
+
+-------------------------------------------------------------------
+
+## 优化场景
+
+#### CPU 高的场景
+
+- 打开慢查询变量，然后统计一段时间，先看下是否有大量慢 SQL。过多的慢查询会导致排队的查询多，CPU 消耗高
+- 如果有慢 SQL，则拿出来 explain，看下执行计划是什么样子的
+- 有过多的锁
+- 硬件资源不满足业务发展，有大量 SQL 正在执行，需要消耗大量的 CPU 计算
+
+#### 磁盘 IOPS 高的场景（可以通过 iostat、vmstat 等工具观察一下）
+
+- 慢 SQL 过多
+- 正在改索引、修改字段、优化表操作等
+- 大分页数 SQL 不合理
+- 子查询 SQL 不合理（比如 in 查询）
+- 查询结果字段太多
+- 表空间过大
+- 索引过多
+
+#### 连接数高的场景
+
+- 慢 SQL 过多
+- 有过多的锁
+
+#### 内存高的场景
+
+- 创建不合适的索引，比如不会被匹配到，或者平时压根不用
+- 数据大，并且还直接查询所有数据出来，没有进行分页
+
+
+
+-------------------------------------------------------------------
+
+## 资料
+
+- <https://www.ancii.com/axbbe36un/>
+- <>
+- <>
+- <>
+- <>

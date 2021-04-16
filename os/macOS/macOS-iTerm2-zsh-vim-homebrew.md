@@ -27,6 +27,9 @@
 
 - 先安装 Xcode command line tools：
     - 打开终端，输入：`xcode-select --install `，如果提示已经安装过了那就不用管了。
+- 国内源安装推荐文：
+    - <https://gitee.com/cunkai/HomebrewCN>
+    - 安装完后退出整个软件，然后重新打开再通过 brew 安装其他软件
 - 打开终端，复制该命令：`ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"`
     - 根据提示，按回车键
     - 根据提示，输入当前用户的密码
@@ -79,8 +82,14 @@ brew update
     - 查看那些已安装的程序需要更新：`brew outdated`
 - 使用国内源
     - 默认的源实在速度有够慢的
-    - 方法（内容一）：<https://mirror.tuna.tsinghua.edu.cn/help/homebrew/>
-    - 方法（内容二）：<https://mirror.tuna.tsinghua.edu.cn/help/homebrew-bottles/>
+    - 腾讯云
+        - <https://zhuanlan.zhihu.com/p/72251385>
+    - 中科大
+        - <https://lug.ustc.edu.cn/wiki/mirrors/help/brew.git>
+        - <https://lug.ustc.edu.cn/wiki/mirrors/help/homebrew-bottles>
+    - 清华
+        - <https://mirror.tuna.tsinghua.edu.cn/help/homebrew/>
+        - <https://mirror.tuna.tsinghua.edu.cn/help/homebrew-bottles/>
 
 
 
@@ -179,10 +188,11 @@ brew update
 - 打开终端，先安装 git（已经安装的跳过该步骤），输入命令：`brew install git`
 - 打开终端，安装 wget 工具，输入命令：`brew install wget`
 - 打开终端，安装 Zsh：`brew install Zsh`
-- 打开终端，安装 oh-my-Zsh：`sh -c "$(wget https://raw.githubusercontent.com/robbyrussell/oh-my-Zsh/master/tools/install.sh -O -)"`
+- 打开终端，安装 oh-my-Zsh：`sh -c "$(wget https://gitee.com/mirrors/oh-my-zsh/raw/master/tools/install.sh -O -)"`
     - 下载完后，会提示你输入当前登录系统的用户密码，输入完成之后就会从 bash 切换到 Zsh，如果你没有输入密码直接跳过了，可以运行该命令进行手动切换：`chsh -s /bin/Zsh gitnavi(你当前系统用户名)`
     - 切换完成之后，关掉终端，重新打开终端即可
 - 如果你需要修改 oh-my-Zsh 的主题，和安装 Zsh 插件，具体可以看我过去整理的这篇文章：[Zsh 入门](https://github.com/judasn/Linux-Tutorial/blob/master/Zsh.md)
+
 
 ### Zsh 软件特色
 
@@ -211,10 +221,14 @@ export LESS_TERMCAP_us=$'\E[04;38;5;146m' # begin underline
 
 - 刷新配置文件：`source ~/.zshrc`，重新查看 man 的命令就可以有高亮了。
 - 常用插件：
-    - `git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions`
-    - `git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting`
-    - `vim ~/.zshrc`，在 plugins 里面换行，分别添加：zsh-autosuggestions，zsh-syntax-highlighting
-- 最喜欢的主题：`ys`
+    - `git clone --depth=1 https://gitee.com/cdk8s_org/zsh-autosuggestions.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions`
+    - `git clone --depth=1 https://gitee.com/cdk8s_org/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting`
+    - `vim ~/.zshrc`，在 plugins 修改配置文件为：`plugins=(git zsh-autosuggestions zsh-syntax-highlighting)`
+- 最喜欢的主题：`af-magic` 和 `ys`
+    - 修改配置文件为：`ZSH_THEME="af-magic"`
+- 注意
+    - 因为安装 zsh，终端的配置都变了，这时候可能最好重新安装 homebrew 会好一点，或者直接改它源
+
 
 ### 关于搭配上 tmux
 
@@ -223,7 +237,7 @@ export LESS_TERMCAP_us=$'\E[04;38;5;146m' # begin underline
 ## vim 知识
 
 - 安装：`brew install vim`
-- 下载配置：`curl https://raw.githubusercontent.com/wklken/vim-for-server/master/vimrc > ~/.vimrc`
+- 下载配置：`curl https://gitee.com/cdk8s_org/vim-for-server/raw/master/vimrc > ~/.vimrc`
 
 -------------------------------------------------------------------
 
@@ -233,11 +247,11 @@ export LESS_TERMCAP_us=$'\E[04;38;5;146m' # begin underline
 - 安装 Proxychains4，输入命令：`brew install proxychains-ng`
 - 修改配置文件：`vim /usr/local/etc/proxychains.conf`
     - 在配置文件中找到：`[ProxyList]`（也就是第 111 行的地方），在其下面一行新增一条：`socks5  127.0.0.1 1080 # my vps`
-- 测试：`proxychains4 wget www.google.com`，如果你能正常下载到 Google 页面，则表示成功了。以后只要在命令前面加个：proxychains4，即可。
+- 测试：`proxychains4 curl www.google.com`，如果你能正常下载到 Google 页面，则表示成功了。以后只要在命令前面加个：proxychains4，即可。
 - 修改终端配置，让命令更加简洁：
     - 如果你是 zsh 终端，配置修改：`vim ~/.zshrc`，添加一行：`alias proxy='proxychains4'`
     - 如果你是 bash 终端，配置修改：`vim ~/.bash_profile`，添加一行：`alias proxy='proxychains4'`
-    - 修改之后，以后要用 proxychains4 执行穿墙命令的话，那就可以这样写：`proxy wget google.com`
+    - 修改之后，以后要用 proxychains4 执行穿墙命令的话，那就可以这样写：`proxy curl www.google.com`
 
 
 ## 资料整理

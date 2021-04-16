@@ -11,6 +11,24 @@
 
 -------------------------------------------------------------------
 
+## 常用配置地址
+
+- ECS服务器管理：<https://ecs.console.aliyun.com/#/server/region/所属地区>
+- 安全组管理：<https://ecs.console.aliyun.com/#/securityGroup/region/所属地区>
+- RAM 访问控制：<https://ram.console.aliyun.com/overview>
+- SSL证书：<https://yundun.console.aliyun.com/?p=cas>
+- 域名管理：<https://dc.console.aliyun.com>
+- DNS 解析：<https://dns.console.aliyun.com/#/dns/domainList>
+- OSS bucket：<https://oss.console.aliyun.com/bucket>
+- 短信服务：<https://dysms.console.aliyun.com>
+- NAT网关：<https://vpc.console.aliyun.com/nat>
+- 负载均衡：<https://slb.console.aliyun.com/slb/overview>
+- VPN网关：<https://vpc.console.aliyun.com/vpn>
+- 弹性公网IP：<https://vpc.console.aliyun.com/eip>
+- CDN：<>
+
+-------------------------------------------------------------------
+
 
 ## 对象存储 OSS
 
@@ -24,8 +42,8 @@
 - [视频点播](https://help.aliyun.com/product/29932.html)
 - [视频直播](https://help.aliyun.com/document_detail/29951.html)
 - [短视频](https://promotion.aliyun.com/ntms/act/shortvideo.html)
-    
-## 人工只能
+
+## 人工智能
 
 - [爬虫风险管理](https://www.aliyun.com/product/antibot)
 - [视觉智能开放平台](https://vision.aliyun.com/)
@@ -45,6 +63,10 @@
 
 - <https://www.aliyun.com/product/ecs>
 
+## 数据管理（Web 数据库管理终端）
+
+- <https://www.aliyun.com/product/dms>
+
 ## 云数据库RDS MySQL 版
 
 - <https://www.aliyun.com/product/rds/mysql>
@@ -57,7 +79,7 @@
 
 - <https://www.aliyun.com/product/drds>
 
-## 云数据库 POLARDB
+## 云数据库 POLARDB（比 DRDS 优先）
 
 - <https://www.aliyun.com/product/polardb>
 
@@ -96,6 +118,16 @@
 ## 图数据库 GDB
 
 - <https://www.aliyun.com/product/gdb>
+- 核心
+    - 支持 TinkerPop Gremlin 查询语言
+- 场景：
+    - 构建复杂的社交网络系统
+    - 构建个人信用信息系统，欺诈检测场景
+    - 构建多维度电商场景，进行个性化推荐
+    - 构建数据高度连接的复杂知识图谱
+    - 构建网络IT拓扑图
+- 集成
+    - dataworks：基于dataworks，GDB支持从MySQL、ODPS、OTS等导入数据。提供了丰富的配置规则，支持表数据到图点、边数据的多种映射，包括导入自定义的常量字段等
 
 ## 云数据库 Redis 版
 
@@ -121,6 +153,8 @@
 ## 日志服务 LOG
 
 - 支持 Kafka 写入
+- 支持 Java log4j2、logback 写入
+    - <https://developer.aliyun.com/article/409045>
 
 - <https://www.aliyun.com/product/sls>
 
@@ -132,11 +166,11 @@
 
 - <https://www.aliyun.com/product/apigateway>
 
-## Quick BI
+## Quick BI（倾向于离线数据报表）
 
 - <https://data.aliyun.com/product/bi>
 
-## DataV数据可视化
+## DataV数据可视化（倾向于实时数据报表）
 
 - <https://data.aliyun.com/visual/datav>
 

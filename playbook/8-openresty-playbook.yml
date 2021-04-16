@@ -1,0 +1,194 @@
+- hosts: all
+  remote_user: root
+  vars:
+    project_backend_path: "/opt/workspace/backend"
+    project_frontend_path: "/opt/workspace/frontend"
+    project_name_to_backend_api: "{{ project_backend_path }}/youmeek-java"
+    project_name_to_www_frontend: "{{ project_frontend_path }}/youmeek-web"
+
+    location_to_backend_api: "/sculptor-boot-backend/"
+    port_to_backend_api: "9091"
+    file_upload_path: "/opt/workspace/sculptor-boot-backend-upload-dir"
+    nginx_conf_path: "/usr/local/openresty/nginx/conf.d"
+
+    domain_to_www_frontend: "web.youmeek.com"
+    domain_to_backend_api: "api.youmeek.com"
+
+    cert_file_path: "/opt/workspace/cert"
+    ssl_pem_path_to_backend_api: "{{ cert_file_path }}/5131204_api.youmeek.com.pem"
+    ssl_key_path_to_backend_api: "{{ cert_file_path }}/5131204_api.youmeek.com.key"
+    ssl_pem_path_to_www_frontend: "{{ cert_file_path }}/5131230_web.youmeek.com.pem"
+    ssl_key_path_to_www_frontend: "{{ cert_file_path }}/5131230_web.youmeek.com.key"
+  tasks:
+    - name: create directory
+      file:
+        path: "{{ item }}"
+        state: directory
+      with_items:
+        - "{{ file_upload_path }}"
+        - "{{ cert_file_path }}"
+        - "{{ project_backend_path }}"
+        - "{{ project_frontend_path }}"
+        - "{{ nginx_conf_path }}"
+
+    - name: install openresty
+      shell: "{{ item }}"
+      with_items:
+        - yum install yum-utils
+        - yum-config-manager --add-repo https://openresty.org/package/centos/openresty.repo
+        - yum install -y openresty
+
+    - name: set PATH
+      blockinfile:
+        path: /root/.zshrc
+        marker: "#{mark} openresty ENV"
+        block: |
+          export PATH=${PATH}:/usr/local/openresty/bin
+          export PATH=${PATH}:/usr/local/openresty/nginx/sbin
+
+    - name: source zshrc
+      shell: source /root/.zshrc
+
+    - name: create nginx.conf
+      copy:
+        dest: "/usr/local/openresty/nginx/conf/nginx.conf"
+        content: |
+          worker_processes  1;
+
+          events {
+              worker_connections  1024;
+          }
+
+
+          http {
+              include       mime.types;
+              default_type  application/octet-stream;
+
+
+              sendfile        on;
+
+              keepalive_timeout  65;
+
+              gzip on;
+              gzip_buffers 8 16k;
+              gzip_min_length 512;
+              gzip_disable "MSIE [1-6]\.(?!.*SV1)";
+              gzip_http_version 1.1;
+              gzip_types   text/plain text/css application/javascript application/x-javascript application/json application/xml;
+              client_max_body_size 20m;
+
+              limit_req_zone $binary_remote_addr zone=contentRateLimit:10m rate=10r/s;
+              limit_conn_zone $binary_remote_addr zone=perIpLimit:10m;
+              limit_conn_zone $server_name zone=perServerLimit:10m;
+
+              include /usr/local/openresty/nginx/conf.d/*.conf;
+          }
+
+    - name: create other conf file
+      file:
+        path="{{ nginx_conf_path }}/{{ item }}"
+        state=touch
+      with_items:
+        - http-redirect-https.conf
+        - backend-api.conf
+        - www-frontend.conf
+
+    - name: set http-redirect-https.conf
+      blockinfile:
+        path: {{ nginx_conf_path }}/http-redirect-https.conf
+        marker: ""
+        block: |
+          server {
+              listen 80;
+              server_name {{ domain_to_www_frontend }};
+              return 301 https://$server_name$request_uri;
+          }
+          server {
+              listen 80;
+              server_name {{ domain_to_backend_api }};
+              return 301 https://$server_name$request_uri;
+          }
+
+    - name: set backend-api.conf
+      blockinfile:
+        path: {{ nginx_conf_path }}/backend-api.conf
+        marker: ""
+        block: |
+          server {
+              charset utf-8;
+              client_max_body_size 128M;
+
+              #listen 80;
+              listen 443 ssl;
+
+              ssl_certificate     {{ ssl_pem_path_to_backend_api }};
+              ssl_certificate_key {{ ssl_key_path_to_backend_api }};
+
+              ssl_session_timeout 5m;
+              ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+              ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+              ssl_prefer_server_ciphers on;
+
+              server_name {{ domain_to_backend_api }} 127.0.0.1 localhost;
+
+              location ^~ /upload {
+                  root    /usr/local/upload;
+                  autoindex on;
+                  autoindex_exact_size off;
+                  autoindex_localtime on;
+              }
+
+              location ^~ {{ location_to_backend_api }} {
+                  proxy_pass http://127.0.0.1:{{ port_to_backend_api }};
+                  proxy_redirect off;
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+
+                  limit_conn perIpLimit 10;
+                  limit_conn perServerLimit 500;
+                  limit_req zone=contentRateLimit burst=10 nodelay;
+              }
+
+              location ^~ /logs {
+                  root    {{ project_name_to_backend_api }};
+                  autoindex on;
+                  autoindex_exact_size off;
+                  autoindex_localtime on;
+              }
+          }
+
+    - name: set www-frontend.conf
+      blockinfile:
+        path: {{ nginx_conf_path }}/www-frontend.conf
+        marker: ""
+        block: |
+          server {
+              charset utf-8;
+              client_max_body_size 128M;
+
+              #listen 80;
+              listen 443 ssl;
+
+              ssl_certificate     {{ ssl_pem_path_to_www_frontend }};
+              ssl_certificate_key {{ ssl_key_path_to_www_frontend }};
+
+              ssl_session_timeout 5m;
+              ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+              ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+              ssl_prefer_server_ciphers on;
+
+              server_name {{ domain_to_www_frontend }};
+
+              location / {
+                root    {{ project_name_to_www_frontend }};
+                index  index.html;
+              }
+          }
+
+
+    - name: reload openresty
+      shell: "{{ item }}"
+      with_items:
+        - nginx -s reload

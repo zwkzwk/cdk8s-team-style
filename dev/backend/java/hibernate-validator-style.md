@@ -33,7 +33,6 @@ import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 import java.io.Serializable;
 
-@ApiModel(value = "SysUserCreateRequestParam")
 @Setter
 @Getter
 @ToString
@@ -42,33 +41,27 @@ public class SysUserCreateRequestParam implements Serializable {
 
 	private static final long serialVersionUID = -1L;
 
-	@ApiModelProperty("用户名")
 	@NotBlank(message = "用户名不能为空")
 	@Length(min = 1, max = 50, message = "用户名长度不正确")
 	private String username;
 
-	@ApiModelProperty("用户密码")
 	@NotBlank(message = "用户密码不能为空")
 	@Length(min = 1, max = 50, message = "用户密码长度不正确")
 	private String userPassword;
 
-	@ApiModelProperty("邮箱地址")
 	@NotBlank(message = "邮箱地址不能为空")
 	@Length(min = 1, max = 50, message = "邮箱地址长度不正确")
 	@Email(message = "邮箱地址格式不正确")
 	private String userEmail;
 
-	@ApiModelProperty("固话")
 	@NotBlank(message = "固话不能为空")
 	@Length(min = 1, max = 20, message = "固话长度不正确")
 	private String telephone;
 
-	@ApiModelProperty("手机号")
 	@NotBlank(message = "手机号不能为空")
 	@Length(min = 1, max = 20, message = "手机号长度不正确")
 	private String mobilePhone;
 
-	@ApiModelProperty("性别")
 	@NotNull(message = "性别不能为空")
 	@Range(min = 1, max = 4, message = "性别数值不正确")
 	private Integer genderEnum;
@@ -209,10 +202,14 @@ private BigDecimal greatOrEqualThan;
 地址校验（适用于：String 类型）
 
 其他常用：
-@Pattern(regexp = "[a-zA-z]+://[^\\s]*", message = "链接地址必须包含：http:// 或 https:// 等前缀")
 @Range(min = 1, max = 100, message = "排序范围只能在 1 ~ 100 的正整数之间，值越小，排序越靠前")
-@Email(message = "邮箱地址格式不正确")
 @Pattern(regexp="(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{5,10}",message="密码必须是5~10位数字和字母的组合")
+@Pattern(regexp = "^[\\u4E00-\\u9FA5A-Za-z0-9\\*]*$", message = "用户名必须是文字、字母和数字")
+
+@Pattern(regexp = "[a-zA-z]+://[^\\s]*", message = "链接地址必须包含：http:// 或 https:// 等前缀")
+@Email(message = "邮箱地址格式不正确")
+@Pattern(regexp = "^[1][3,4,5,6,7,8,9][0-9]{9}$", message = "手机号格式有误")
+
 ```
 
 

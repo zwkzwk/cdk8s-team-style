@@ -20,6 +20,12 @@ curl --silent --location https://rpm.nodesource.com/setup_9.x | sudo bash -
 如果你是要安装 node 10 系列，下载这个 yum 源
 curl --silent --location https://rpm.nodesource.com/setup_10.x | sudo bash -
 
+如果你是要安装 node 11 系列，下载这个 yum 源
+curl --silent --location https://rpm.nodesource.com/setup_11.x | sudo bash -
+
+如果你是要安装 node 12 系列，下载这个 yum 源
+curl --silent --location https://rpm.nodesource.com/setup_12.x | sudo bash -
+
 然后通过 yum 开始安装（软件大小：51M 左右）
 sudo yum -y install nodejs
 ```
@@ -34,3 +40,10 @@ sudo yum -y install nodejs
 - 列表源：`nrm ls`
 - 使用源：`nrm use taobao`
 - 更多使用方法：<https://segmentfault.com/a/1190000000473869>
+
+## 安装 yarn
+
+- 安装：`npm install -g yarn`
+- 验证：`yarn -v`
+
+

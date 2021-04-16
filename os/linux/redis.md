@@ -28,10 +28,9 @@
 ## Redis 3.X 安装（Docker）
 
 - 官网：<https://hub.docker.com/_/redis/>
-- 创建一个宿主机目录用来存放 redis 配置文件：`mkdir -p /data/docker/redis/conf`
-- 创建一个宿主机以后用来存放数据的目录：`mkdir -p /data/docker/redis/db`
-- 赋权：`chmod 777 -R /data/docker/redis`
-- 自己编写一个配置文件 `vim /data/docker/redis/conf/redis.conf`，内容如下：
+- 创建一个宿主机目录用来存放 redis 配置文件、数据：`mkdir -p ~/docker/redis/conf ~/docker/redis/db`
+- 赋权：`chmod -R 777 ~/docker/redis`
+- 自己编写一个配置文件 `vim ~/docker/redis/conf/redis.conf`，内容如下：
 
 - Redis 默认的配置文件内容：
 
@@ -43,6 +42,7 @@ protected-mode yes
 
 # 免密配置（选填）
 bind 0.0.0.0
+# 当为 no 的时候支持外网访问
 protected-mode no
 
 # 其他：
@@ -102,8 +102,8 @@ aof-rewrite-incremental-fsync yes
 
 ```
 docker run -d -it -p 6379:6379 \
-    -v /data/docker/redis/conf/redis.conf:/etc/redis/redis.conf \
-    -v /data/docker/redis/db:/data \
+    -v ~/docker/redis/conf/redis.conf:/etc/redis/redis.conf \
+    -v ~/docker/redis/db:/data \
     --restart always \
     --name cloud-redis redis:3.2 \
     redis-server /etc/redis/redis.conf
@@ -188,6 +188,16 @@ aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
 ```
 
+- 启动镜像：
+
+```
+docker run -d -it -p 6379:6379 \
+    -v ~/docker/redis/conf/redis.conf:/etc/redis/redis.conf \
+    -v ~/docker/redis/db:/data \
+    --restart always \
+    --name cloud-redis redis:5 \
+    redis-server /etc/redis/redis.conf
+```
 
 ## RedisCluster 集群（Docker 方式）
 
@@ -199,11 +209,11 @@ rdb-save-incremental-fsync yes
 - 拉取镜像：`docker pull registry.cn-shenzhen.aliyuncs.com/youmeek/redis-to-cluster:3.2.3`
 - 重新打个 tag（旧名字太长了）：`docker tag registry.cn-shenzhen.aliyuncs.com/youmeek/redis-to-cluster:3.2.3 redis-to-cluster:3.2.3`
 - 创建网段：`docker network create --subnet=172.19.0.0/16 net-redis-to-cluster`
-- 宿主机创建配置文件：`mkdir -p /data/docker/redis-to-cluster/config && vim /data/docker/redis-to-cluster/config/redis.conf`
+- 宿主机创建配置文件：`mkdir -p ~/docker/redis-to-cluster/config && vim ~/docker/redis-to-cluster/config/redis.conf`
 
 ```
 bind 0.0.0.0
-protected-mode yes
+protected-mode no
 port 6379
 tcp-backlog 511
 timeout 0
@@ -259,14 +269,14 @@ hz 10
 aof-rewrite-incremental-fsync yes
 ```
 
-- 赋权：`chmod 777 -R /data/docker/redis-to-cluster/`
+- 赋权：`chmod -R 777 ~/docker/redis-to-cluster/`
 - 运行 6 个节点：
-	- `docker run -it -d --name redis-to-cluster-1 -p 5001:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.2 redis-to-cluster:3.2.3 bash`
-	- `docker run -it -d --name redis-to-cluster-2 -p 5002:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.3 redis-to-cluster:3.2.3 bash`
-	- `docker run -it -d --name redis-to-cluster-3 -p 5003:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.4 redis-to-cluster:3.2.3 bash`
-	- `docker run -it -d --name redis-to-cluster-4 -p 5004:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.5 redis-to-cluster:3.2.3 bash`
-	- `docker run -it -d --name redis-to-cluster-5 -p 5005:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.6 redis-to-cluster:3.2.3 bash`
-	- `docker run -it -d --name redis-to-cluster-6 -p 5006:6379 -v /data/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.7 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-1 -p 5001:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.2 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-2 -p 5002:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.3 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-3 -p 5003:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.4 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-4 -p 5004:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.5 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-5 -p 5005:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.6 redis-to-cluster:3.2.3 bash`
+	- `docker run -it -d --name redis-to-cluster-6 -p 5006:6379 -v ~/docker/redis-to-cluster/config/redis.conf:/usr/redis/redis.conf --net=net-redis-to-cluster --ip 172.19.0.7 redis-to-cluster:3.2.3 bash`
 - 配置 redis-to-cluster-1 节点：`docker exec -it redis-to-cluster-1 bash`
 	- 启动容器的 redis：`/usr/redis/src/redis-server /usr/redis/redis.conf`
 - 其他 5 个节点一样进行启动。
@@ -352,7 +362,10 @@ M: 5d0fe968559af3035d8d64ab598f2841e5f3a059 172.19.0.7:6379
 - 命令是不区分大小写的，但是这里为了方便和后面的 key value 进行区分所以我全部写大写，你也可以用小写。
     - 但是需要注意的是：key 是完全区分大小写的，比如 key=codeBlog 和 key=codeblog 是两个键值
 - 官网命令列表：<http://redis.io/commands>
+- `redis-cli -h 127.0.0.1 -p 6379`，如果有密码，进入 client 后需要输入：`auth 123456`
 - `SET key value`，设值。eg：`SET myblog www.youmeek.com`
+- `redis-server -v`，查看服务器版本
+- `info keyspace`，查看各个库的 key 使用情况
 - `GET key`，取值
 - `SELECT 0`，切换数据库
 - `INCR key`，递增数字
@@ -453,6 +466,59 @@ MSET (10 keys): 56401.58 requests per second
 ```
 
 - 只测试特定类型：`redis-benchmark -t set,lpush -n 100000 -q`
+
+
+## K8S YAML
+
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: sculptor-boot-redis
+  namespace: sculptor-boot-backend-dev
+spec:
+  podManagementPolicy: Parallel
+  serviceName: sculptor-boot-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sculptor-boot-redis
+  template:
+    metadata:
+      labels:
+        app: sculptor-boot-redis
+    spec:
+      containers:
+        - name: sculptor-boot-redis
+          image: redis:4
+          lifecycle:
+            postStart:
+              exec:
+                command: [ "/bin/sh", "-c", "redis-cli config set requirepass 123456" ]
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 1
+              memory: 1Gi
+            requests:
+              cpu: 0.5
+              memory: 500Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: sculptor-boot-backend-dev
+  name: sculptor-boot-redis
+  labels:
+    app: sculptor-boot-redis
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: sculptor-boot-redis
+```
 
 
 ## 资料

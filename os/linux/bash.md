@@ -84,6 +84,20 @@ drwxr-xr-x. 5 root root 4096 3月 26 10:57，其中最前面的 d 表示这是�
 	- `cp -r 源文件夹 目标文件夹`，复制文件夹
 	- `cp -r -v 源文件夹 目标文件夹`，复制文件夹(显示详细信息，一般用于文件夹很大，需要查看复制进度的时候)
 	- `cp /usr/share/easy-rsa/2.0/keys/{ca.crt,server.{crt,key},dh2048.pem,ta.key} /etc/openvpn/keys/`，复制同目录下花括号中的文件
+	- `cp -arp /opt/* /mnt/` 复制文件、文件夹，以及它们的属性（最全面的复制）
+        - -a：此选项通常在复制目录时使用，它保留链接、文件属性，并复制目录下的所有内容
+        - -p：除复制文件的内容外，还把修改时间和访问权限也复制到新文件中。
+        - -r：若给出的源文件是一个目录文件，此时将复制该目录下所有的子目录和文件。
+- `rsync`，远程传输文件
+    - 本地传输
+        - `rsync -a source destination`，传输文件夹
+            - -a：归档模式，表示递归传输并保持文件属性，包括递归目录、文件元信息。等同于"-rtopgDl"。
+            - 如果目标目录不存在则会自动创建目录
+            - 最终效果会变成：`destination/source`
+        - `rsync -a source/ destination`，传输文件夹
+            - 效果会变成：`destination 就是代表 source 目录`
+    - 远程传输（默认使用 SSH 进行远程登录和数据传输，已经已经做了免密是不需要输入认证信息的）
+        - `rsync -a source/ username@remote_host:destination`，传输文件夹
 - `tar cpf - . | tar xpf - -C /opt`，复制当前所有文件到 /opt 目录下，一般如果文件夹文件多的情况下用这个更好，用 cp 比较容易出问题
 - `mv 文件 目标文件夹`，移动文件到目标文件夹
 	- `mv 文件`，不指定目录重命名后的名字，用来重命名文件
@@ -170,6 +184,8 @@ drwxr-xr-x. 5 root root 4096 3月 26 10:57，其中最前面的 d 表示这是�
 	- linux 的权限分为 rwx。r 代表：可读，w 代表：可写，x 代表：可执行
 	- 这三个权限都可以转换成数值表示，r = 4，w = 2，x = 1，- = 0，所以总和是 7，也就是最大权限。第一个 7 是所属主（user）的权限，第二个 7 是所属组（group）的权限，最后一位 7 是非本群组用户（others）的权限。
 	- `chmod -R 777 目录` 表示递归目录下的所有文件夹，都赋予 777 权限
+    - `chown myUsername:myGroupName myFile` 表示修改文件所属用户、组
+    - `chown -R myUsername:myGroupName myFolder` 表示递归修改指定目录下的所有文件权限
 - `su`：切换到 root 用户，终端目录还是原来的地方（常用）
 	- `su -`：切换到 root 用户，其中 **-** 号另起一个终端并切换账号
 	- `su 用户名`，切换指定用户帐号登陆，终端目录还是原来地方。
@@ -196,6 +212,203 @@ drwxr-xr-x. 5 root root 4096 3月 26 10:57，其中最前面的 d 表示这是�
 - `umount /newDir/`，卸载挂载，用目录名
 	- 如果这样卸载不了可以使用：`umount -l /newDir/`
 - `umount /dev/sdb5`，卸载挂载，用分区名
+
+-------------------------------------------------------------------
+
+## ECS 数据盘分区
+
+- 参考：<https://help.aliyun.com/document_detail/25426.html>
+- 先看已经挂载在服务器上的磁盘有多少：`fdisk -l`
+
+```
+Disk /dev/vda: 42.9 GB, 42949672960 bytes, 83886080 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x000c0010
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vda1   *        2048    83886046    41941999+  83  Linux
+
+Disk /dev/vdb: 21.5 GB, 21474836480 bytes, 41943040 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+```
+
+- 这里有 /dev/vda 和 /dev/vdb
+- 如果发现没找到，则参考这篇文章进行挂载：[挂载数据盘](https://help.aliyun.com/document_detail/25446.html)
+- 接着运行以下命令分区数据盘：
+```
+fdisk -u /dev/vdb
+
+根据提示输入 n 创建一个新分区
+
+接着根据提示输入 p 选择分区类型为主分区
+
+接着输入分区编号：1
+
+接着输入可用的扇区编号，这里直接回车采用默认值，或者自己输入 2048
+
+接着输入最后一个扇区编号，这里直接回车采用默认值
+
+最后输入 w 开始分区，并退出
+
+整个流程如下：
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+
+Partition number (1-4, default 1): 1
+
+First sector (2048-41943039, default 2048): 2048
+
+Last sector, +sectors or +size{K,M,G} (2048-41943039, default 41943039):
+Using default value 41943039
+Partition 1 of type Linux and of size 20 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+```
+
+- 接着我们查看新分区情况：`fdisk -lu /dev/vdb`
+
+```
+Disk /dev/vdb: 21.5 GB, 21474836480 bytes, 41943040 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x3d24a4a9
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vdb1            2048    41943039    20970496   83  Linux
+```
+
+- 接着为分区创建文件系统，CentOS 7 我们一般选择 ext4 文件系统：`mkfs -t ext4 /dev/vdb1`
+- 接着配置 /etc/fstab 文件并挂载分区，让开启自动挂载分区
+
+```
+先备份
+cp /etc/fstab /etc/fstab-20210115.bak
+
+然后我们假设最终要挂载的一个新路径是：/mnt
+这里我们用root用户可以直接使用以下命令修改配置文件，本质就是获取到 vdb1 的 UUID 自动补充成一个字符串写入到文件最底部
+echo `blkid /dev/vdb1 | awk '{print $2}' | sed 's/\"//g'` /mnt ext4 defaults 0 0 >> /etc/fstab
+
+然后挂载分区：
+mount /dev/vdb1 /mnt
+
+最后检查 /mnt 盘是不是变大了：df -h
+```
+
+
+-------------------------------------------------------------------
+
+## ECS 系统盘数据迁移到数据盘
+
+- 参考：<https://help.aliyun.com/knowledge_detail/41400.html>
+- 先对系统盘做快照，出问题，方便回滚
+- 先停止系统盘上的部署软件，比如 nginx，tomcat 等，我这里主要是迁移 Elasticsearch
+- 先查看 Elasticsearch 未迁移之前的健康状态：
+
+```
+查看集群分布
+curl -XGET 'http://192.168.0.18:9200/_cat/nodes?v'
+ip           heap.percent ram.percent cpu load_1m load_5m load_15m node.role master name
+192.168.0.19           37          98   0    0.05    0.06     0.05 mdi       -      elasticsearch-2
+192.168.0.18           25          97   0    0.00    0.01     0.05 mdi       *      elasticsearch-1
+192.168.0.20           22          96   0    0.00    0.01     0.05 mdi       -      elasticsearch-3
+
+查看集群健康状态
+curl -X GET 'http://192.168.0.18:9200/_cluster/health?pretty'
+{
+  "cluster_name" : "sacf",
+  "status" : "green",
+  "timed_out" : false,
+  "number_of_nodes" : 3,
+  "number_of_data_nodes" : 3,
+  "active_primary_shards" : 120,
+  "active_shards" : 240,
+  "relocating_shards" : 0,
+  "initializing_shards" : 0,
+  "unassigned_shards" : 0,
+  "delayed_unassigned_shards" : 0,
+  "number_of_pending_tasks" : 0,
+  "number_of_in_flight_fetch" : 0,
+  "task_max_waiting_in_queue_millis" : 0,
+  "active_shards_percent_as_number" : 100.0
+}
+
+查看索引清单健康状态
+curl -X GET 'http://192.168.0.18:9200/_cluster/health?pretty&level=indices'
+
+查看索引的分片的状态和位置（更加详细）
+curl -X GET 'http://192.168.0.18:9200/_cluster/health?pretty&level=shards'
+```
+
+- 停止 Elasticsearch 命令：
+
+```
+切换用户：
+su - sacf
+
+jps -l
+11825 org.elasticsearch.bootstrap.Elasticsearch
+4394 sun.tools.jps.Jps
+
+kill 11825
+
+然后 exit 切换到 root 用户
+```
+
+- 对数据盘进行分区，具体方法参考本文上面资料。
+- 假设我们要把 /opt 进行迁移
+```
+先把文件转移到数据库盘上
+cp -arp /opt/* /mnt/
+
+为了稳妥起见，可以再备份一次，创建一个临时目录
+mkdir /home/temp
+cp -arp /opt/* /home/temp/
+
+删除旧文件
+rm -rf /opt/*
+
+卸载目录
+umount /mnt
+如果卸载报错：In some cases useful info about processes that use...
+则查询谁在使用该目录后直接杀死进程
+fuser -m -k /mnt/
+
+执行以下命令，把数据盘挂载到 /opt 目录。
+mount /dev/vdb1 /opt
+
+然后修改 vim /etc/fstab，把上文填写的 /mnt 改为 /opt
+
+然后用 df -h 查看新的磁盘分布情况
+
+重新启动软件
+切换用户：
+su - sacf
+
+后台运行：
+cd /opt/elasticsearch-6.7.2 ; ./bin/elasticsearch -d -p 自定义pid值
+
+发现没问题后删除临时备份
+su - root
+rm -rf /home/temp/
+
+```
+
+
+-------------------------------------------------------------------
 
 
 ## wget 下载文件
@@ -233,6 +446,63 @@ drwxr-xr-x. 5 root root 4096 3月 26 10:57，其中最前面的 d 表示这是�
     - `grep '^[^#]' /etc/openvpn/server.conf`
 - 查看某个配置文件，排除掉里面以 # 开头和 ; 开头的注释内容：
     - `grep '^[^#;]' /etc/openvpn/server.conf`
+
+## 找回/恢复被删除文件
+
+- 被删除的目录或文件，不能再重新进行创建，不然就无法再找回。即使你创建了一个同路径的目录，里面啥文件也没有，也是一种覆盖
+
+```
+安装依赖
+yum -y install gcc-c++ e2fsprogs.x86_64 e2fsprogs-devel.x86_64
+
+下载工具
+wget https://nchc.dl.sourceforge.net/project/extundelete/extundelete/0.2.4/extundelete-0.2.4.tar.bz2
+
+解压
+tar jxvf extundelete-0.2.4.tar.bz2 
+
+安装
+cd  extundelete-0.2.4
+
+./configure 
+
+make && make install
+
+验证安装结果
+extundelete -v
+
+假设你被删除的目录是：/opt/my-soft/abc 目录
+这时候你要切换到原删除目录的上层目录，也就是 /opt/my-soft
+
+输入
+ls -id ./
+结果格式：139372 ./
+
+可以得到当前的 inode 值 139372
+
+看下你这个被删除目录是属于哪个分区：df -h
+一般如果没有自己动过分区，一般是：/dev/dba1
+
+开始恢复
+extundelete /dev/vda1 --inode 139372
+WARNING: EXT3_FEATURE_INCOMPAT_RECOVER is set.
+The partition should be unmounted to undelete any files without further data loss.
+If the partition is not currently mounted, this message indicates 
+it was improperly unmounted, and you should run fsck before continuing.
+If you decide to continue, extundelete may overwrite some of the deleted
+files and make recovering those files impossible.  You should unmount the
+file system and check it with fsck before using extundelete.
+Would you like to continue? (y/n) 
+
+根据提示输入：y
+可以看到你被删除的目录、文件
+
+恢复文件
+extundelete /dev/vda1 --restore-file wushan1.txt
+
+恢复文件夹
+extundelete  /dev/vda1  --restore-directory /opt/my-soft/abc
+```
 
 
 

@@ -20,7 +20,7 @@
 
 ## Nginx 安装（Docker）
 
-- 预设好目录，在宿主机上创建下面目录：`mkdir -p /data/docker/nginx/logs /data/docker/nginx/conf`
+- 预设好目录，在宿主机上创建下面目录：`mkdir -p /data/docker/nginx/logs /data/docker/nginx/conf /data/docker/nginx/html`
 - **重点**：先准备好你的 nginx.conf 文件，存放在宿主机的：`vim /data/docker/nginx/conf/nginx.conf` 目录下，等下需要映射。
 
 ```
@@ -52,7 +52,17 @@ http {
 
 - 官网镜像：<https://hub.docker.com/_/nginx/>
 - 下载镜像：`docker pull nginx:1.12.2`
-- 运行容器：`docker run --name youmeek-nginx -p 80:80 -v /data/docker/nginx/logs:/var/log/nginx -v /data/docker/nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx:1.12.2`
+- 运行容器：
+
+```
+docker run --name local-nginx \
+-p 80:80 \
+-v /data/docker/nginx/logs:/var/log/nginx \
+-v /data/docker/nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro \
+-v /data/docker/nginx/html:/usr/share/nginx/html \
+-d nginx:1.12.2
+```
+
 - 重新加载配置（目前测试无效，只能重启服务）：`docker exec -it youmeek-nginx nginx -s reload`
 - 停止服务：`docker exec -it youmeek-nginx nginx -s stop` 或者：`docker stop youmeek-nginx`
 - 重新启动服务：`docker restart youmeek-nginx`
@@ -287,6 +297,57 @@ server {
     }
 }
 
+```
+
+## SSL 配置
+
+- 除了 crt 后缀的文件，有的是 pem 后缀的，配置一样
+- 旧版本的 nginx
+```
+# crt 和 key 文件的存放位置根据你自己存放位置进行修改
+server {
+    listen       443;
+    server_name  sso.youmeek.com;
+    ssl  on;
+    ssl_certificate     /opt/ssl/certificate.crt;
+    ssl_certificate_key /opt/ssl/private.key;
+
+    location / {
+        root   html;
+        index  index.html index.htm;
+    }
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   html;
+    }
+}
+```
+
+- 新版本的 nginx，同时监听 80 和 443
+```
+# crt 和 key 文件的存放位置根据你自己存放位置进行修改
+server {
+    listen 80;
+    listen 443 ssl;
+    
+    # ssl  on; #一定不要写这一行，不然无法监听 80
+    ssl_certificate     /opt/jar/ssl/server.crt;
+    ssl_certificate_key /opt/jar/ssl/server.key;
+    
+    ssl_session_timeout 5m;
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:HIGH:!aNULL:!MD5:!RC4:!DHE;
+    ssl_prefer_server_ciphers on;
+
+    location / {
+        root   html;
+        index  index.html index.htm;
+    }
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+        root   html;
+    }
+}
 ```
 
 
@@ -577,6 +638,21 @@ http {
 }
 
 ```
+
+## WebSocket 配置
+
+```
+location ^~ /sculptor-boot-backend/webSocket {
+    proxy_pass http://127.0.0.1:9876;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header X-real-ip $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_read_timeout 600s;
+}
+```
+
 
 ----------------------------------------------------------------------
 

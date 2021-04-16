@@ -38,6 +38,17 @@
 }
 ```
 
+#### 单个对象查询
+
+- 请求方式：`POST`
+- URL：<https://github.com/cdk8s/store/sysUser/view>
+- 请求参数：
+
+```
+{
+  "id": "11111111111111111111"
+}
+```
 
 #### 单个对象新增
 
@@ -132,12 +143,7 @@
 
 ### GET 请求
 
-- 通过 ID 查看单个对象（GET）：<https://github.com/cdk8s/store/sysUser/detail?id=123456>
-- 通过 ID 删除单个对象（GET）：<https://github.com/cdk8s/store/sysUser/delete?id=123456>
-- 通过 userName 查看单个对象（GET）：<https://github.com/cdk8s/store/sysUser/detailByUserName?userName=123456>
-- 通过 userName 查看列表（GET）：<https://github.com/cdk8s/store/sysUser/listByUserName?userName=123456>
 - 特殊场景可以考虑 GET 带复杂查询：
-    - get + query string 对 cache 更友好
     - get + query string 可加入浏览器收藏夹
     - get + query string 对搜索引擎更友好
 
@@ -148,8 +154,27 @@
 ### 注意
 
 - 采用标准的 Http 状态码，但是前段判断逻辑最好还是以 `"isSuccess": true` 为判断标准
+    - 如果 HTTP 状态码返回是非 200，则一定是后台发生错误，这个错误可能是系统错误，也可能是业务层面不满足条件，但是这种就是肯定错误请求，前端阻塞弹出错误即可
+    - 如果 HTTP 状态码返回是 200，接下来要判断 `"isSuccess": true` 是 true 才是表示后台已经正确处理业务了，如果是 false 则后台肯定存在业务错误，需要前台阻塞弹出提示 message 中的信息
+- 响应业务失败的场景是根据 code 值来区分：
+    - 1 系统繁忙，请稍候重试
+    - 200 成功
+    - 100001 非法访问
+    - 100002 参数不能为空
+    - 100003 参数格式错误
+    - 100004 重复请求
+    - 100005 请求数据错误
+    - 100006 请求数据不一致
+    - 100007 数据不存在
+    - 100008 数据已存在
+    - 100009 数据异常
+    - 100010 调用内部服务接口异常
+    - 100011 调用第三方接口异常
+    - 200001 未认证
+    - 200011 未绑定微信账号
+    - 999999 系统异常
 
-|状态码|Spring|含义|
+|HTTP 状态码|Spring|含义|
 |---|---|---|
 |200|请求成功|`HttpStatus.OK`|
 |301|永久重定向|`HttpStatus.MOVED_PERMANENTLY`|
@@ -171,7 +196,7 @@
   "isSuccess": false,
   "msg": "您还未登录，请先登录",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -183,7 +208,7 @@
   "isSuccess": false,
   "msg": "用户名或密码不正确",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -195,7 +220,7 @@
   "isSuccess": false,
   "msg": "退出失败",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -207,7 +232,7 @@
   "isSuccess": false,
   "msg": "每页显示最小值 10，最大值 20",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -220,13 +245,13 @@
   "isSuccess": false,
   "msg": "服务器异常，请联系管理员",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
 -------------------------------------------------------------------
 
-### 响应失败（"isSuccess": true）
+### 响应成功（"isSuccess": true）
 
 #### 常量数据
 
@@ -257,7 +282,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -267,12 +292,12 @@
 ```
 {
   "data": {
-    "id_token": "Cd534924C12561De4Eb948531A7Fdeb9"
+    "token": "Cd534924C12561De4Eb948531A7Fdeb9"
   },
   "isSuccess": true,
   "msg": "登出成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -285,7 +310,7 @@
   "isSuccess": true,
   "msg": "退出成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -302,7 +327,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -325,7 +350,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -369,7 +394,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -382,7 +407,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -394,7 +419,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -406,7 +431,7 @@
   "isSuccess": true,
   "msg": "操作成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -545,7 +570,7 @@
   "isSuccess": true,
   "msg": "查询成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
@@ -610,7 +635,7 @@
   "isSuccess": true,
   "msg": "查询成功",
   "timestamp": 1536768054052,
-  "code": 0
+  "code": 200
 }
 ```
 
